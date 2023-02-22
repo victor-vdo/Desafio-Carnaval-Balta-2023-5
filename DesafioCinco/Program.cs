@@ -51,8 +51,12 @@ void ExtendeValorInteiro(int valorInteiro)
 
     var tamanho = valorInteiro.ToString().Length;
     int tamanhoPrimeiraCentena = SeparaMilharesTamanho(tamanho);
-    string valor = RetornaValorPrimeiraCentena(tamanhoPrimeiraCentena, dicDecimais, dicDezenas, dicCentenas);
-    valor = RetornaValorTipoDezena(tamanho, valor, dicDecimais, dicDezenas, dicCentenas, dicInfinitos);
+    string valor = String.Empty;
+    if(valorInteiro.ToString().Length > 3)
+    {
+        valor = RetornaValorPrimeiraCentena(tamanhoPrimeiraCentena, dicDecimais, dicDezenas, dicCentenas);
+        valor = RetornaValorTipoDezena(tamanho, valor, dicDecimais, dicDezenas, dicCentenas, dicInfinitos);
+    }
 
     var tamanhoResto = tamanho - tamanhoPrimeiraCentena;
     var primeiraCentena = RetornaPrimeiraCentena(tamanhoPrimeiraCentena);
@@ -65,7 +69,7 @@ void ExtendeValorInteiro(int valorInteiro)
         if (centenasRestantesTamanho > 3)
         {
             tamanhoRestante = SeparaMilharesTamanho(centenasRestantesTamanho);
-            valor += RetornaValorCentena(tamanhoRestante, centenasRestantes, dicDecimais, dicDezenas, dicCentenas);
+            valor += RetornaValorCentena(tamanhoRestante, centenasRestantes, dicDecimais, dicDezenas, dicCentenas, dicPrimeiraDezena);
             if (valor.Contains("cem e "))
                 valor = valor.Replace("cem e ", "cento e ");
             valor = RetornaValorTipoDezena(centenasRestantesTamanho, valor, dicDecimais, dicDezenas, dicCentenas, dicInfinitos);
@@ -75,9 +79,9 @@ void ExtendeValorInteiro(int valorInteiro)
 
     if(centenasRestantesTamanho <=3)
     {
-        var valorUltimaCentena = RetornaValorUltimaCentena(valorInteiro);
+        var valorUltimaCentena = RetornaValorUltimaCentena(valorInteiro).Replace("\0", "");
         tamanhoRestante = valorUltimaCentena.Length;
-        valor += RetornaValorCentena(tamanhoRestante, valorUltimaCentena, dicDecimais, dicDezenas, dicCentenas);
+        valor += RetornaValorCentena(tamanhoRestante, valorUltimaCentena, dicDecimais, dicDezenas, dicCentenas, dicPrimeiraDezena);
     }
 
     Console.WriteLine("O valor é: " + valor);
@@ -95,7 +99,7 @@ string RetornaValorUltimaCentena(int valorInteiro)
     return valor;
 }
 
-string RetornaValorCentena(int centena,string valorCentena,  Dictionary<int, string> dicDecimais, Dictionary<int, string> dicDezenas, Dictionary<int, string> dicCentenas)
+string RetornaValorCentena(int centena,string valorCentena,  Dictionary<int, string> dicDecimais, Dictionary<int, string> dicDezenas, Dictionary<int, string> dicCentenas, Dictionary<int, string> dicPrimeiraDezena)
 {
     var primeirosDigitos = String.Empty;
     var primeiraDezena = valorCentena.Length > 0 ? valorCentena[0].ToString() : String.Empty;
@@ -119,10 +123,17 @@ string RetornaValorCentena(int centena,string valorCentena,  Dictionary<int, str
             var decimalDois = dicDecimais.Where(x => x.Key.ToString().StartsWith(segundaDezena)).FirstOrDefault().Value;
             if (decimalDois.Contains("zero"))
                 return dezenaDois.ToString();
-
+            
             valor = dezenaDois?.ToString()
                 + " e "
                 + decimalDois;
+
+            if (segundaDezena.StartsWith("1") && terceiraDezena != "0")
+                valor = dicPrimeiraDezena
+                    .Where(c => c.Key.ToString()
+                    .StartsWith(primeiraDezena + segundaDezena))
+                    .FirstOrDefault().Value;
+
             break;
 
         case 3:
@@ -140,6 +151,17 @@ string RetornaValorCentena(int centena,string valorCentena,  Dictionary<int, str
                 + dezenaTres
                 + " e "
                 + decimalTres;
+
+            if (segundaDezena.StartsWith("1") && terceiraDezena != "0")
+                valor = 
+                    dicCentenas.Where(x => x.Key.ToString().StartsWith(primeiraDezena)).FirstOrDefault().Value +
+                    " e " +
+                    dicPrimeiraDezena
+                    .Where(c => c.Key.ToString()
+                    .StartsWith(segundaDezena + terceiraDezena))
+                    .FirstOrDefault().Value;
+            if (valor.Contains("cem e"))
+                valor = valor.Replace("cem e","cento e");
             break;
 
         default:
@@ -250,7 +272,6 @@ string RetornaTipoDezena(int tamanho)
 
 string RetornaValorPrimeiraCentena(int centena, Dictionary<int, string> dicDecimais, Dictionary<int, string> dicDezenas, Dictionary<int, string> dicCentenas)
 {
-    var primeirosDigitos = String.Empty;
     var primeiraDezena = valorInteiro.ToString().Length > 0 ? valorInteiro.ToString()[0].ToString() : String.Empty;
     var segundaDezena  = valorInteiro.ToString().Length > 1 ? valorInteiro.ToString()[1].ToString() : String.Empty;
     var terceiraDezena = valorInteiro.ToString().Length > 2 ? valorInteiro.ToString()[2].ToString() : String.Empty;
@@ -261,13 +282,10 @@ string RetornaValorPrimeiraCentena(int centena, Dictionary<int, string> dicDecim
             break;
 
         case 1:
-            primeirosDigitos = primeiraDezena;
             valor = dicDecimais[Int32.TryParse(primeiraDezena, out int unitario) ? unitario : Int32.MinValue];
             break;
 
         case 2:
-            primeirosDigitos = primeiraDezena
-                + segundaDezena;
             var dezenaDois = dicDezenas.Where(x=> x.Key.ToString().StartsWith(primeiraDezena)).FirstOrDefault().Value;
             var decimalDois = dicDecimais.Where(x => x.Key.ToString().StartsWith(segundaDezena)).FirstOrDefault().Value;
            if(decimalDois.Contains("zero"))
@@ -276,13 +294,24 @@ string RetornaValorPrimeiraCentena(int centena, Dictionary<int, string> dicDecim
             valor = dezenaDois?.ToString()
                 + " e "
                 + decimalDois;
+
+            if(valorInteiro.ToString().Length == 2)
+                valor = String.Empty;
             break;
 
         case 3:
-            primeirosDigitos = valorInteiro.ToString()[0].ToString()
-                + valorInteiro.ToString()[1].ToString()
-                + valorInteiro.ToString()[2].ToString();
-            valor = dicCentenas[centena];
+            var centenaTres = dicCentenas.Where(x => x.Key.ToString().StartsWith(primeiraDezena)).FirstOrDefault().Value;
+            var dezenaTres = dicDezenas.Where(x => x.Key.ToString().StartsWith(segundaDezena)).FirstOrDefault().Value;
+            var decimalTres = dicDecimais.Where(x => x.Key.ToString().StartsWith(terceiraDezena)).FirstOrDefault().Value;
+
+            valor = centenaTres?.ToString()
+                + " e "
+                + dezenaTres
+                + " e "
+                + decimalTres;
+
+            if (valorInteiro.ToString().Length == 3)
+                valor = String.Empty;
             break;
 
         default:
@@ -305,7 +334,7 @@ string RetornaValorTipoDezena(int tamanho, string valor, Dictionary<int, string>
             //valor += " " + valorDezena;
             break;
         case "isCentena":
-            var valorCentena = dicCentenas.Where(c => c.Key.ToString().Length <= tamanho).FirstOrDefault().Value;
+            var valorCentena = dicCentenas.Where(c => c.Key.ToString().Length >= tamanho).FirstOrDefault().Value;
             valor += " " + valorCentena + " ";
             break;
         case "isMilhar":
@@ -313,34 +342,35 @@ string RetornaValorTipoDezena(int tamanho, string valor, Dictionary<int, string>
             valor += " " + valorMilhar + " ";
             break;
         case "isMilhoes":
-            var valorMilhoes = dicInfinitos.Where(x => x.Key.ToString().Length <= tamanho).FirstOrDefault().Value;
-            if (valorInteiro.ToString()[0] > 1)
+            var valorMilhoes = dicInfinitos.Where(x => x.Key.ToString().Length >= tamanho).FirstOrDefault().Value;
+            var primeiroDigito = Int32.TryParse(valorInteiro.ToString()[0].ToString(), out int result) ? result :0 ;
+            if (primeiroDigito > 1)
                 valorMilhoes = "milhões ";
-            valor += " " + valorMilhoes;
+            valor += " " + valorMilhoes + " ";
             break;
         case "isBilhoes":
-            var valorBilhoes = dicInfinitos.Where(x => x.Key.ToString().Length <= tamanho).FirstOrDefault().Value;
+            var valorBilhoes = dicInfinitos.Where(x => x.Key.ToString().Length >= tamanho).FirstOrDefault().Value;
             if (valorInteiro.ToString()[0] > 1)
                 valorBilhoes = "bilhões ";
-            valor += " " + valorBilhoes;
+            valor += " " + valorBilhoes + " ";
             break;
         case "isTrilhoes":
-            var valorTrilhoes = dicInfinitos.Where(x => x.Key.ToString().Length <= tamanho).FirstOrDefault().Value;
+            var valorTrilhoes = dicInfinitos.Where(x => x.Key.ToString().Length >= tamanho).FirstOrDefault().Value;
             if (valorInteiro.ToString()[0] > 1)
                 valorTrilhoes = "trilhões ";
-            valor += " " + valorTrilhoes;
+            valor += " " + valorTrilhoes + " ";
             break;
         case "isQuadrilhoes":
-            var valorQuadrilhoes = dicInfinitos.Where(x => x.Key.ToString().Length <= tamanho).FirstOrDefault().Value;
+            var valorQuadrilhoes = dicInfinitos.Where(x => x.Key.ToString().Length >= tamanho).FirstOrDefault().Value;
             if (valorInteiro.ToString()[0] > 1)
                 valorQuadrilhoes = "quadrilhões ";
-            valor += " " + valorQuadrilhoes;
+            valor += " " + valorQuadrilhoes + " ";
             break;
         case "isQuintilhoes":
             var valorQuintilhoes = dicInfinitos.Where(x => x.Key.ToString().Length >= tamanho && x.Key.ToString().Length < Double.MaxValue).FirstOrDefault().Value;
             if (valorInteiro.ToString()[0] > 1)
                 valorQuintilhoes = "quintilhões ";
-            valor += " " + valorQuintilhoes;
+            valor += " " + valorQuintilhoes + " ";
             break;
         default:
             valor = "Número grande demais! Não foi possível verifica-lo.";
